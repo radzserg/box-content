@@ -1,0 +1,20 @@
+{
+    "name": "radzserg/box-content",
+    "description": "Box.com Content API SDK V2.",
+    "type": "sdk",
+    "require": {
+        "lcobucci/jwt": "^3.1",
+        "guzzlehttp/guzzle": "~6.0"
+    },
+    "authors": [
+        {
+            "name": "Sergey Radzishevskyi",
+            "email": "radzserg@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-0" : {
+            "radzserg\\BoxContent" : "src"
+        }
+    }
+}
