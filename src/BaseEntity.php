@@ -8,7 +8,7 @@ use DateTimeZone;
 /**
  * Acts as a base class for the different Box View APIs.
  */
-abstract class Base
+abstract class BaseEntity
 {
     /**
      * The API path relative to the base API path.
@@ -22,23 +22,80 @@ abstract class Base
      */
     protected $client;
 
-    /**
-     * Take a date in almost any format, and return a date string that is
-     * formatted as an RFC 3339 timestamp.
-     *
-     * @param string|DateTime $date A date string in almost any format, or a
-     *                              DateTime object.
-     *
-     * @return string An RFC 3339 timestamp.
-     */
-    protected static function date($date)
-    {
-        if (is_string($date)) $date = new DateTime($date);
 
-        $date->setTimezone(new DateTimeZone('UTC'));
-        return $date->format('c');
+    /**
+     * The document ID.
+     * @var string
+     */
+    private $id;
+
+    /**
+     * The document metadata.
+     * @var array
+     */
+    private $data;
+
+
+    /**
+     * Instantiate the document.
+     *
+     * @param Client $client The client instance to make requests from.
+     * @param array $data An associative array to instantiate the object with.
+     *                    Use the following values:
+     *                      - string 'id' The document ID.
+     *                      - string|DateTime 'createdAt' The date the document
+     *                        was created.
+     *                      - string 'name' The document title.
+     *                      - string 'status' The document status, which can be
+     *                        'queued', 'processing', 'done', or 'error'.
+     */
+    public function __construct($client, $data)
+    {
+        $this->client = $client;
+        $this->id = $data['id'];
+
+        $this->setValues($data);
     }
 
+    /**
+     * Return document data
+     * @param $key
+     * @return mixed|null
+     */
+    public function getData($key)
+    {
+        return isset($this->data[$key]) ? $this->data[$key] : null;
+    }
+
+    /**
+     * Get the document ID.
+     *
+     * @return string The document ID.
+     */
+    public function id()
+    {
+        return $this->id;
+    }
+
+    /**
+     * Update the current document instance with new metadata.
+     *
+     * @param array $data An associative array to instantiate the object with.
+     *                    Use the following values:
+     *                      - string|DateTime 'createdAt' The date the document
+     *                        was created.
+     *                      - string 'name' The document title.
+     *                      - string 'status' The document status, which can be
+     *                        'queued', 'processing', 'done', or 'error'.
+     *
+     * @return void
+     */
+    private function setValues($data)
+    {
+        $this->id = $data['id'];
+        $this->data = $data;
+    }
+    
     /**
      * Handle an error. We handle errors by throwing an exception.
      *

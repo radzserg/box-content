@@ -6,7 +6,7 @@ I don't have much time to implement all API endpoints. I implemented only what I
 But this could be easily extended.**
 
 
-Strart from here [box.com docs](https://docs.box.com/docs/getting-started-box-platform)
+Start from here [box.com docs](https://docs.box.com/docs/getting-started-box-platform)
 
 ```php
 
@@ -64,4 +64,4 @@ try {
 
 ```
 
-If you need more endpoints - pull requests are welcome :) 
+If you need more endpoints - pull requests are welcome :)

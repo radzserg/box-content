@@ -3,7 +3,7 @@
 namespace radzserg\BoxContent;
 
 /**
- * Provide access to the Box View Document API. The Document API is used for
+ * Provide access to the Box Content Document API. The Document API is used for
  * uploading, checking status, and deleting documents.
  */
 class Document extends Base
@@ -28,59 +28,6 @@ class Document extends Base
     public static $path = '/files';
 
 
-    /**
-     * The document ID.
-     * @var string
-     */
-    private $id;
-
-    /**
-     * The document metadata.
-     * @var array
-     */
-    private $data;
-
-
-    /**
-     * Instantiate the document.
-     *
-     * @param Client $client The client instance to make requests from.
-     * @param array $data An associative array to instantiate the object with.
-     *                    Use the following values:
-     *                      - string 'id' The document ID.
-     *                      - string|DateTime 'createdAt' The date the document
-     *                        was created.
-     *                      - string 'name' The document title.
-     *                      - string 'status' The document status, which can be
-     *                        'queued', 'processing', 'done', or 'error'.
-     */
-    public function __construct($client, $data)
-    {
-        $this->client = $client;
-        $this->id = $data['id'];
-
-        $this->setValues($data);
-    }
-
-    /**
-     * Return document data
-     * @param $key
-     * @return mixed|null
-     */
-    public function getData($key)
-    {
-        return isset($this->data[$key]) ? $this->data[$key] : null;
-    }
-
-    /**
-     * Get the document ID.
-     *
-     * @return string The document ID.
-     */
-    public function id()
-    {
-        return $this->id;
-    }
 
     /**
      * Download a thumbnail of a specific size for a file.
@@ -124,6 +71,7 @@ class Document extends Base
 
         return new self($client, $metadata);
     }
+    
 
     /**
      * Upload a local file and return a new document instance.
@@ -160,26 +108,6 @@ class Document extends Base
         ]);
     }
 
-
-    /**
-     * Update the current document instance with new metadata.
-     *
-     * @param array $data An associative array to instantiate the object with.
-     *                    Use the following values:
-     *                      - string|DateTime 'createdAt' The date the document
-     *                        was created.
-     *                      - string 'name' The document title.
-     *                      - string 'status' The document status, which can be
-     *                        'queued', 'processing', 'done', or 'error'.
-     *
-     * @return void
-     */
-    private function setValues($data)
-    {
-        $this->id = $data['id'];
-        $this->data = $data;
-    }
-
     /**
      * Generic upload function used by the two other upload functions, which are
      * more specific than this one, and know how to handle upload by URL and
@@ -202,6 +130,6 @@ class Document extends Base
     {
         $options['basePath'] = '';
         $metadata = static::request($client, '/api/2.0/files/content', null, $postParams, $options);
-        return new self($client, $metadata['entries'][0]);
+        return new static($client, $metadata['entries'][0]);
     }
 }

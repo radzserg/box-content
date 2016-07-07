@@ -126,6 +126,40 @@ class Client
         $this->useTokenType = $tokenType;
     }
 
+
+    /**
+     * Return the request handler.
+     *
+     * @return Request The request handler.
+     */
+    public function getRequestHandler()
+    {
+        $this->generateAuthToken();
+        if (!isset($this->requestHandler)) {
+            $this->setRequestHandler(new Request($this->accessToken));
+        } else {
+            // update access token
+            $this->requestHandler->setAccessToken($this->accessToken);
+        }
+        
+        return $this->requestHandler;
+    }
+
+
+    /**
+     * Set the request handler.
+     *
+     * @param Request $requestHandler The request handler.
+     *
+     * @return void
+     */
+    public function setRequestHandler($requestHandler)
+    {
+        $this->requestHandler = $requestHandler;
+    }
+
+    // DOCUMENTS
+
     /**
      * Get a list of all documents that meet the provided criteria.
      *
@@ -164,37 +198,6 @@ class Client
     }
 
     /**
-     * Return the request handler.
-     *
-     * @return Request The request handler.
-     */
-    public function getRequestHandler()
-    {
-        $this->generateAuthToken();
-        if (!isset($this->requestHandler)) {
-            $this->setRequestHandler(new Request($this->accessToken));
-        } else {
-            // update access token
-            $this->requestHandler->setAccessToken($this->accessToken);
-        }
-        
-        return $this->requestHandler;
-    }
-
-
-    /**
-     * Set the request handler.
-     *
-     * @param Request $requestHandler The request handler.
-     *
-     * @return void
-     */
-    public function setRequestHandler($requestHandler)
-    {
-        $this->requestHandler = $requestHandler;
-    }
-
-    /**
      * Upload a local file and return a new document instance.
      *
      * @param resource $file The file resource to upload.
@@ -220,6 +223,13 @@ class Client
         return Document::uploadFile($this, $file, $params);
     }
 
+    // USERS
+
+    public function createPlatformUser($name)
+    {
+        return User::create($this, $name);
+    }
+
     private function generateAuthToken()
     {
         if ($this->useTokenType == static::SUBTYPE_ENTERPRISE) {
@@ -229,6 +239,7 @@ class Client
         }
 
     }
+
 
     /**
      * Obtain user access token
