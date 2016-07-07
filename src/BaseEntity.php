@@ -2,8 +2,6 @@
 
 namespace radzserg\BoxContent;
 
-use DateTime;
-use DateTimeZone;
 
 /**
  * Acts as a base class for the different Box View APIs.
@@ -28,7 +26,7 @@ abstract class BaseEntity
      * The document ID.
      * @var string
      */
-    private $id;
+    protected $id;
 
     /**
      * The document metadata.
@@ -85,5 +83,24 @@ abstract class BaseEntity
 
         return new static($this->client, $metadata);
     }
+
+
+    /**
+     * Get entity     
+     * @param $id
+     * @param array $fields
+     * @return BaseEntity
+     */
+    public function get($id, $fields = [])
+    {
+        $getParams = [];
+        if (!empty($fields)) {
+            $getParams['fields'] = implode(',', $fields);
+        }
+        $metadata = $this->client->getRequestHandler()->send($this->path . '/' . $id, $getParams);
+
+        return new static($this->client, $metadata);
+    }
+
 
 }

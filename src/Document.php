@@ -5,8 +5,10 @@ namespace radzserg\BoxContent;
 /**
  * Provide access to the Box Content Document API. The Document API is used for
  * uploading, checking status, and deleting documents.
+ *
+ * @method Document get($id, $fields = [])
  */
-class Document extends Base
+class Document extends BaseEntity
 {
     /**
      * Document error codes.
@@ -25,8 +27,7 @@ class Document extends Base
      * The Document API path relative to the base API path.
      * @var string
      */
-    public static $path = '/files';
-
+    protected $path = '/files';
 
 
     /**
@@ -38,98 +39,62 @@ class Document extends Base
      * @param string $ext
      * @return string The contents of the downloaded thumbnail.
      */
-    public function thumbnail($width, $height, $ext = 'jpg')
+
+    /**
+     * Retrieves a thumbnail, or smaller image representation, of this file. Sizes of 32x32,
+     * 64x64, 128x128, and 256x256 can be returned in the .png format and sizes of 32x32, 94x94, 160x160, and 320x320
+     * can be returned in the .jpg format. Thumbnails can be generated for the image and video file formats.
+     * @param string $ext
+     * @param $options
+     *      - min_height - The minimum height of the thumbnail
+     *      - min width - The minimum width of the thumbnail
+     *      - max height - The maximum height of the thumbnail
+     *      - max width - The maximum width of the thumbnail
+     * @return mixed
+     */
+    public function thumbnail($ext = 'png', $options)
     {
-        $path = static::$path . '/' . $this->id . "/thumbnail.{$ext}" ;
-        $getParams = [
-            'min_height' => $height,
-            'min_width' => $width,
-        ];
-        return static::request($this->client, $path, $getParams, null, [
-            'rawResponse' => true,
+        $path = "{$this->path}/{$this->id}/thumbnail.{$ext}" ;
+
+        return $this->client->getRequestHandler()->send($path, $options, null, [
+            'rawResponse' => true
         ]);
     }
 
-
     /**
-     * Create a new document instance by ID, and load it with values requested
-     * from the API.
+     * Use the Uploads API to allow users to add a new file. The user can then upload a file by specifying the
+     * destination folder for the file. If the user provides a file name that already exists in the destination folder,
+     * the user will receive an error.
      *
-     * @param Client $client The client instance to make requests from.
-     * @param string $id The document ID.
-     *
-     * @param array $fields - array of fields to return
-     * @return Document A document instance using data from the API.
-     */
-    public static function get($client, $id, $fields = [])
-    {
-        $getParams = [];
-        if (!empty($fields)) {
-            $getParams['fields'] = implode(',', $fields);
-        }
-        $metadata = static::request($client,  static::$path . '/' . $id, $getParams);
-
-        return new self($client, $metadata);
-    }
-    
-
-    /**
-     * Upload a local file and return a new document instance.
-     *
-     * @param Client $client The client instance to make requests from.
+     * A different Box URL, https://upload.box.com/api/2.0/files/content, handles uploads. This API uses the multipart
+     * post method to complete all upload tasks. You can optionally specify a Content-MD5 header with the SHA1 hash of
+     * the file to ensure that the file is not corrupted in transit.
      * @param resource $file The file resource to upload.
-     * @param array|null $params Optional. An associative array of options
-     *                           relating to the file upload. None are
-     *                           necessary; all are optional. Use the following
-     *                           options:
-     *                             - string|null 'name' Override the filename of
-     *                               the file being uploaded.
-     *                             - string[]|string|null 'thumbnails' An array
-     *                               of dimensions in pixels, with each
-     *                               dimension formatted as [width]x[height],
-     *                               this can also be a comma-separated string.
-     *                             - bool|null 'nonSvg' Create a second version
-     *                               of the file that doesn't use SVG, for users
-     *                               with browsers that don't support SVG?
-     *
-     * @return Document A new document instance.
-     * @throws BoxContentException
+     * @param array $params
+     *  - Content-MD5 string The SHA1 hash of the file
+     *  - attributes object REQUIRED
+     * File attributes:
+     *  - name string REQUIRED Name of the file
+     *  - parent object REQUIRED Folder object being uploaded into
+     *  - id string REQUIRED Child of parent. Designates folder_id of parent object. Use 0 for the root folder.
+     *  - content_created_at timestamp See content times for formatting
+     *  - content_modified_at timestamp See content times for formatting
+     * @return static
      */
-    public static function uploadFile($client, $file, $params = [])
+    public function uploadFile($file, $params = [])
     {
         if (!is_resource($file)) {
             $message = '$file is not a valid file resource.';
             return static::error(static::INVALID_FILE_ERROR, $message);
         }
 
-        return static::upload($client, $params, [
+        $metadata = $this->client->getRequestHandler()->send('/api/2.0/files/content', null, $params, [
             'file' => $file,
             'host' => static::FILE_UPLOAD_HOST,
+            'basePath' => ''
         ]);
+
+        return new static($this->client, $metadata['entries'][0]);
     }
 
-    /**
-     * Generic upload function used by the two other upload functions, which are
-     * more specific than this one, and know how to handle upload by URL and
-     * upload from filesystem.
-     *
-     * @param Client $client The client instance to make requests from.
-     * @param array|null $postParams An associative array of POST params to be
-     *                               sent in the body.
-     * @param array|null $options An associative array of request options that
-     *                            may modify the way the request is made.
-     *
-     * @return Document A new document instance.
-     * @throws BoxContentException
-     */
-    private static function upload(
-        $client,
-        $postParams = [],
-        $options = []
-    )
-    {
-        $options['basePath'] = '';
-        $metadata = static::request($client, '/api/2.0/files/content', null, $postParams, $options);
-        return new static($client, $metadata['entries'][0]);
-    }
 }

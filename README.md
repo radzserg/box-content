@@ -3,7 +3,7 @@
 
 **Warning: this is not full and well tested SDK. This is just an example of usages.
 I don't have much time to implement all API endpoints. I implemented only what I needed.
-But this could be easily extended.**
+But this could be easily extended. I used box.com platform integration.**
 
 
 Start from here [box.com docs](https://docs.box.com/docs/getting-started-box-platform)
@@ -29,38 +29,36 @@ $client = new Client([
     'userTokenCachePath' => '/path/to/boxcom_user_token.json',  // path to file where user token will be saved
 ]);
 
-
-// file upload
+// first create platform user then we will use this user for other operations
 try {
-    $params = [
-        'parent' => ['id' => "0"],  // upload to root user folder
-        'name' => $fileName,
-    ];
-    $params = [
-        'attributes' => CJSON::encode($params)
-    ];
-    $document = $client->uploadFile($file, $params);
-    if ($document) {
-        return $document->id();
-    }
+    $platformUser = $client->user->createPlatformUser(['name' => 'John Doe']);
 } catch (BoxContentException $e) {
-    // log error
-    throw $e;
+    echo $e->getMessage() . "\n" . $e->getTraceAsString() . "\n\n";
 }
 
-// get embed link
-$document = $client->getDocument($documentId, ['expiring_embed_link']);
+// update your content boxUserId with received user id
+try {
+    $params = [
+        'attributes' => json_encode([
+            'parent' => ['id' => "0"],  // upload to root user folder
+            'name' => 'composer3.json',
+        ])
+    ];
+    $file = $client->document->uploadFile(fopen('../myfile.jpg', 'r'), $params);
+
+    var_dump($file);
+} catch (BoxContentException $e) {
+    echo $e->getMessage() . "\n" . $e->getTraceAsString() . "\n\n";
+}
+
+$content = $client->document->get('73301640961')->thumbnail('png', ['min_height' => 32, 'min_width' => 32]);
+echo '<img src="data:image/png;base64,' . base64_encode($content) . '"/>';
+
+
+$document = $client->document->get('73301640961', ['expiring_embed_link']);
 $link = $document->getData('expiring_embed_link');
-$link = isset($link['url']) ? $link['url'] : null;
+echo isset($link['url']) ? $link['url'] : null;
 
-// get thumbnail
-try {
-    $thumb = $client->getDocument($id)->thumbnail($minWidth, $minHeight);
-    return $thumb;
-} catch (BoxContentException $e) {
-    // log error
-    throw $e;
-}
 
 ```
 

@@ -56,7 +56,7 @@ class Client
         if ($name == 'user') {
             return new User($this);
         } elseif ($name == 'document') {
-            return new Document();
+            return new Document($this);
         } elseif ($name == 'token') {
             return new Token($this->tokenConfig);
         }
