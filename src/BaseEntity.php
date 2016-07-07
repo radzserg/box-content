@@ -22,7 +22,7 @@ abstract class BaseEntity
      * Base path for entity
      * @var string
      */
-    protected $path = '/users';
+    protected $path;
 
     /**
      * The document ID.
