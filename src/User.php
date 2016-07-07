@@ -6,21 +6,23 @@ namespace radzserg\BoxContent;
  * Provide access to the Box View Document API. The Document API is used for
  * uploading, checking status, and deleting documents.
  */
-class User extends Base
+class User extends BaseEntity
 {
 
+  
+
+
     /**
-     * The Document API path relative to the base API path.
-     * @var string
+     * Creates platform user
+     * @param $userParams
+     * @return static
      */
-    public static $path = '/users';
-
-
-    public static function create($client, $userParams = [])
+    public function createPlatformUser($userParams)
     {
-        $metadata = static::request($client, '', null, $userParams);
+        $userParams['is_platform_access_only'] = true;
+        $metadata = $this->client->getRequestHandler(false)->send(static::$path, null, $userParams);
 
-        return new static($client, $metadata['entries'][0]);
+        return new static($this->client, $metadata);
     }
 
 }

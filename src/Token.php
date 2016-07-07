@@ -17,24 +17,95 @@ class Token
 
     const OBTAIN_TOKEN_URL = 'https://api.box.com/oauth2/token';
 
+    const SUBTYPE_ENTERPRISE = 'enterprise';
+    const SUBTYPE_USER = 'user';
+
     /**
-     * Obtain access token
-     * @param $publicKeyId
-     * @param $clientId
-     * @param $secretId
-     * @param $subject
-     * @param $boxSubType
-     * @param $privateCertPath
-     * @param $certPassword
-     * @param null $accessTokenCachePath
+     * Box application client ID
+     * @var string
+     */
+    private $clientId;
+
+    /**
+     * Box application secret ID
+     * @var string
+     */
+    private $secretId;
+
+    /**
+     * Box application public key ID
+     * @var string
+     */
+    private $publicKeyId;
+
+    /**
+     * Box enterprise ID
+     * @var - string
+     */
+    private $enterpriseId;
+
+    /**
+     * Box user ID
+     * @var - string
+     */
+    private $boxUserId;
+
+    /**
+     * A path to private certificate generated for JWT
+     * @var string
+     */
+    private $privateCertPath;
+
+    /**
+     * Cache file path to store app access token
+     * @var null
+     */
+    private $appTokenCachePath = null;
+
+    /**
+     * Cache file path to store user access token
+     * @var null
+     */
+    private $userTokenCachePath = null;
+
+    /**
+     * Password for certificate
+     * @var - string
+     */
+    private $certPassword = null;
+
+
+    /**
+     * Token constructor.
+     * @param $config
+     */
+    public function __construct($config)
+    {
+        foreach ($config as $field => $value) {
+            if (property_exists($this, $field)) {
+                $this->$field = $value;
+            }
+        }
+    }
+
+
+    /**
+     * Return access token
      * @return null
      * @throws BoxContentException
      */
-    public static function getAccessToken($publicKeyId, $clientId, $secretId, $subject, $boxSubType, $privateCertPath,
-                                    $certPassword, $accessTokenCachePath = null)
+    public function getAccessToken($type)
     {
-        if ($accessTokenCachePath && file_exists($accessTokenCachePath)) {
-            $token = @file_get_contents($accessTokenCachePath);
+        if ($type == static::SUBTYPE_ENTERPRISE) {
+            $cachePath = $this->appTokenCachePath;
+            $subject = $this->enterpriseId;
+        } else {
+            $cachePath = $this->userTokenCachePath;
+            $subject = $this->boxUserId;
+        }
+        //$publicKeyId, $clientId, $secretId, $subject, $boxSubType, $privateCertPath, $certPassword, $accessTokenCachePath = null
+        if ($cachePath && file_exists($cachePath)) {
+            $token = @file_get_contents($cachePath);
             if ($token) {
                 $token = json_decode($token, true);
                 if ($token['expires_at'] > time()) {
@@ -47,14 +118,14 @@ class Token
         $jwt = (new Builder())
             ->setHeader('alg', 'RS256')
             ->setHeader('typ', 'JWT')
-            ->setHeader('kid', $publicKeyId)
-            ->setIssuer($clientId)
+            ->setHeader('kid', $this->publicKeyId)
+            ->setIssuer($this->clientId)
             ->setAudience(static::OBTAIN_TOKEN_URL)
             ->setSubject($subject)
-            ->set('box_sub_type', $boxSubType)
+            ->set('box_sub_type', $type)
             ->setId(uniqid() . uniqid())
             ->setExpiration(time() + 30)
-            ->sign($signer, new Key("file://{$privateCertPath}", $certPassword)) // creates a signature using your private key
+            ->sign($signer, new Key("file://{$this->privateCertPath}", $this->certPassword)) // creates a signature using your private key
             ->getToken();
 
         $assertion = (string)$jwt;
@@ -66,8 +137,8 @@ class Token
                 'form_params' => [
                     'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
                     'assertion' => $assertion,
-                    'client_id' => $clientId,
-                    'client_secret' => $secretId
+                    'client_id' => $this->clientId,
+                    'client_secret' => $this->secretId
                 ]
             ]);
 
@@ -83,18 +154,18 @@ class Token
         $accessToken = $token['access_token'];
         $expiresAt = time() + $token['expires_in'] - 5;
 
-        if ($accessTokenCachePath) {
-            $dirPath = dirname($accessTokenCachePath);
+        if ($cachePath) {
+            $dirPath = dirname($cachePath);
             if (!is_dir($dirPath)) {
                 mkdir($dirPath, 0777, true);
             }
-            if (!@file_put_contents($accessTokenCachePath, json_encode([
+            if (!@file_put_contents($cachePath, json_encode([
                 'access_token' => $accessToken,
                 'expires_at' => $expiresAt
             ]))) {
                 throw new BoxContentException("Cannot save access token to cache file.");
             }
-            @chmod($accessTokenCachePath, 0666);
+            @chmod($cachePath, 0666);
         }
 
         return $accessToken;

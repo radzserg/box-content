@@ -3,82 +3,27 @@
 namespace radzserg\BoxContent;
 
 use Exception;
-use Lcobucci\JWT\Signer\Key;
-use Lcobucci\JWT\Signer\Rsa\Sha256;
-use Lcobucci\JWT\Builder;
-use GuzzleHttp\Client as GuzzleClient;
 
 /**
  * Provides access to the Box Content API.
  * @see - https://docs.box.com/reference#file-object
+ *
+ *
+ * @property User $user
+ * @property Document $document
+ * @property Token $token
  */
 class Client
 {
 
     const OBTAIN_TOKEN_URL = 'https://api.box.com/oauth2/token';
 
-    const SUBTYPE_ENTERPRISE = 'enterprise';
-    const SUBTYPE_USER = 'user';
 
     /**
-     * Box application client ID
-     * @var string
+     * Keep authorize token config
+     * @var array
      */
-    private $clientId;
-
-    /**
-     * Box application secret ID
-     * @var string
-     */
-    private $secretId;
-
-    /**
-     * Box application public key ID
-     * @var string
-     */
-    private $publicKeyId;
-
-    /**
-     * Box enterprise ID
-     * @var - string
-     */
-    private $enterpriseId;
-
-    /**
-     * Box user ID
-     * @var - string
-     */
-    private $boxUserId;
-
-    /**
-     * A path to private certificate generated for JWT
-     * @var string
-     */
-    private $privateCertPath;
-
-    /**
-     * Cache file path to store app access token
-     * @var null
-     */
-    private $appTokenCachePath = null;
-
-    /**
-     * Cache file path to store user access token
-     * @var null
-     */
-    private $userTokenCachePath = null;
-
-    /**
-     * Password for certificate
-     * @var - string
-     */
-    private $certPassword = null;
-
-
-    /**
-     * @var - access token
-     */
-    private $accessToken;
+    private $tokenConfig = [];
 
     /**
      * The request handler.
@@ -87,11 +32,6 @@ class Client
     private $requestHandler;
 
 
-    /**
-     * Specify what kind of token use for Authorization request
-     * @var string
-     */
-    private $useTokenType = self::SUBTYPE_USER;
 
     public function __construct($config)
     {
@@ -100,46 +40,41 @@ class Client
             if (empty($config[$field])) {
                 throw  new BoxContentException("Required field {$field} is not set");
             } else {
-                $this->$field = $config[$field];
+                $this->tokenConfig[$field] = $config[$field];
             }
         }
         $optionalFields = ['enterpriseId', 'boxUserId', 'appTokenCachePath', 'userTokenCachePath'];
         foreach ($optionalFields as $field) {
             if (!empty($config[$field])) {
-                $this->$field = $config[$field];
+                $this->tokenConfig[$field] = $config[$field];
             }
         }
     }
 
-
-    /**
-     * Set token type for authorization
-     * @param $tokenType
-     * @throws Exception
-     */
-    public function setTokenType($tokenType)
+    public function __get($name)
     {
-        if (!in_array($tokenType, [static::SUBTYPE_ENTERPRISE, static::SUBTYPE_USER])) {
-            throw new Exception("Undefined token type");
+        if ($name == 'user') {
+            return new User($this);
+        } elseif ($name == 'document') {
+            return new Document();
+        } elseif ($name == 'token') {
+            return new Token($this->tokenConfig);
         }
-        $this->accessToken = null;
-        $this->useTokenType = $tokenType;
     }
 
-
     /**
-     * Return the request handler.
-     *
-     * @return Request The request handler.
+     * @param bool $userUserToken
+     * @return Request
+     * @throws BoxContentException
      */
-    public function getRequestHandler()
+    public function getRequestHandler($userUserToken = true)
     {
-        $this->generateAuthToken();
+        $type = $userUserToken ? Token::SUBTYPE_USER : Token::SUBTYPE_ENTERPRISE;
+        $accessToken = $this->token->getAccessToken($type);
         if (!isset($this->requestHandler)) {
-            $this->setRequestHandler(new Request($this->accessToken));
+            $this->setRequestHandler(new Request($accessToken));
         } else {
-            // update access token
-            $this->requestHandler->setAccessToken($this->accessToken);
+            $this->requestHandler->setAccessToken($accessToken);
         }
         
         return $this->requestHandler;
@@ -223,47 +158,5 @@ class Client
         return Document::uploadFile($this, $file, $params);
     }
 
-    // USERS
 
-    public function createPlatformUser($name)
-    {
-        return User::create($this, $name);
-    }
-
-    private function generateAuthToken()
-    {
-        if ($this->useTokenType == static::SUBTYPE_ENTERPRISE) {
-            $this->getAppAccessToken();
-        } else {
-            $this->getUserAccessToken();
-        }
-
-    }
-
-
-    /**
-     * Obtain user access token
-     * @throws BoxContentException
-     */
-    public function getUserAccessToken()
-    {
-        if (empty($this->boxUserId)) {
-            throw new BoxContentException("Property boxUserId must be set to get user access token");
-        }
-        $this->accessToken = Token::getAccessToken($this->publicKeyId, $this->clientId, $this->secretId, $this->boxUserId,
-            static::SUBTYPE_USER, $this->privateCertPath, $this->certPassword, $this->userTokenCachePath);
-    }
-
-    /**
-     * Obtain app access token
-     * @throws BoxContentException
-     */
-    public function getAppAccessToken()
-    {
-        if (empty($this->enterpriseId)) {
-            throw new BoxContentException("Property enterpriseId must be set to get user access token");
-        }
-        $this->accessToken = Token::getAccessToken($this->publicKeyId, $this->clientId, $this->secretId, $this->enterpriseId,
-            static::SUBTYPE_ENTERPRISE, $this->privateCertPath, $this->certPassword, $this->appTokenCachePath);
-    }
 }
